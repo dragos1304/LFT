@@ -1,0 +1,5 @@
+{
+  "name": "Learning Fast-Track",
+  "description": "An all-in-one AI study partner that transforms your study materials (PDFs, YouTube videos, lectures) into interactive, multi-faceted 'Study Sets'. It uses the Gemini API to generate summaries, keywords, flashcards, and practice questions to accelerate your learning.",
+  "requestFramePermissions": []
+}
