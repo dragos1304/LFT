@@ -1,3 +1,6 @@
+import { Timestamp } from 'firebase/firestore';
+
+// --- Core Models ---
 export type User = {
   uid: string;
   displayName: string | null;
@@ -10,45 +13,57 @@ export enum View {
   StudySet = 'studySet',
 }
 
+// --- Firestore Document Models ---
 export type StudySet = {
-  id: string;
+  id: string; // Firestore document ID
   userId: string;
   title: string;
   summaryText: string;
   hierarchicalOutline: OutlineNode;
-  createdAt: Date;
+  createdAt: Timestamp;
 };
 
+export type Keyword = {
+  id: string; // Firestore document ID
+  studySetId: string;
+  text: string;
+  definition: string;
+  sourceSentence: string;
+  aiImportanceScore: number;
+  userImportanceScores: { [userId: string]: number }; // Map of userId -> score
+};
+
+export type Flashcard = {
+  id: string; // Firestore document ID
+  studySetId: string;
+  frontText: string;
+  backText: string;
+  isUserEdited: boolean;
+  srsData: SRSData;
+};
+
+export type PracticeQuestion = {
+  id: string; // Firestore document ID
+  studySetId: string;
+  bloomLevel: BloomLevel;
+  questionType: QuestionType;
+  questionText: string;
+  options?: string[];
+  correctAnswer: string;
+  aiGradingRubric: string;
+};
+
+// --- Complex Types & Enums ---
 export type OutlineNode = {
   topic: string;
   details: string[];
   children?: OutlineNode[];
 };
 
-export type Keyword = {
-  id: string;
-  studySetId: string;
-  text: string;
-  definition: string;
-  sourceSentence: string;
-  aiImportanceScore: number;
-  userImportanceScores: { [userId: string]: number };
-  timestampStart?: number;
-};
-
 export type SRSData = {
   interval: number; // in days
   easeFactor: number;
-  nextReviewDate: string;
-};
-
-export type Flashcard = {
-  id: string;
-  studySetId: string;
-  frontText: string;
-  backText: string;
-  isUserEdited: boolean;
-  srsData: SRSData;
+  nextReviewDate: Timestamp;
 };
 
 export enum BloomLevel {
@@ -64,31 +79,6 @@ export enum QuestionType {
   MCQ = 'mcq',
   OpenEnded = 'open_ended',
 }
-
-export type PracticeQuestion = {
-  id:string;
-  studySetId: string;
-  bloomLevel: BloomLevel;
-  questionType: QuestionType;
-  questionText: string;
-  options?: string[];
-  correctAnswer: string;
-  aiGradingRubric: string;
-};
-
-export type ClassGroup = {
-  id: string;
-  groupName: string;
-  joinCode: string;
-  memberIds: string[];
-};
-
-export type ConceptLink = {
-  id: string;
-  studySetId: string;
-  userExplanation: string; // The "story"
-  createdAt: Date;
-};
 
 export type ChatMessage = {
   sender: 'user' | 'ai';

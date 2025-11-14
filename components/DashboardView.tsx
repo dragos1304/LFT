@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, StudySet } from '../types';
-import { firebaseService } from '../services/firebaseService';
+import { StudySet } from '../types';
+import { firestoreService } from '../services/firestoreService';
 import { geminiService } from '../services/geminiService';
+import { useAuth } from '../contexts/AuthContext';
 import { Button, Modal, Spinner, Card } from './Shared';
 import { PlusIcon, BookOpenIcon } from './Icons';
 
-// Sub-component for the modal, defined within the same file
+// Modal for adding a new source, now part of the Dashboard component
 const AddNewSourceModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onStudySetAdded: () => void;
-  user: User;
-}> = ({ isOpen, onClose, onStudySetAdded, user }) => {
+}> = ({ isOpen, onClose, onStudySetAdded }) => {
+  const { user } = useAuth();
   const [sourceType, setSourceType] = useState<'upload' | 'youtube'>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -20,6 +21,10 @@ const AddNewSourceModal: React.FC<{
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      setError("You must be logged in to add a source.");
+      return;
+    }
     if ((sourceType === 'upload' && !file) || (sourceType === 'youtube' && !youtubeUrl)) {
       setError('Please provide a source.');
       return;
@@ -31,21 +36,27 @@ const AddNewSourceModal: React.FC<{
     try {
       const source = sourceType === 'upload' ? file! : youtubeUrl;
       const studySetData = await geminiService.processSourceMaterial(source);
-      await firebaseService.addStudySet(user.uid, studySetData);
+      await firestoreService.addStudySet(user.uid, studySetData);
       onStudySetAdded();
-      onClose();
+      handleClose();
     } catch (err) {
-      setError('Failed to create study set. Please try again.');
+      setError('Failed to create study set. The AI model may be overloaded. Please try again.');
       console.error(err);
     } finally {
       setIsLoading(false);
-      setFile(null);
-      setYoutubeUrl('');
     }
   };
+  
+  const handleClose = () => {
+    setFile(null);
+    setYoutubeUrl('');
+    setError(null);
+    setIsLoading(false);
+    onClose();
+  }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add New Source">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Add New Source">
       <form onSubmit={handleSubmit}>
         <div className="flex border border-slate-600 rounded-md p-1 mb-6">
           <button type="button" onClick={() => setSourceType('upload')} className={`w-1/2 p-2 rounded ${sourceType === 'upload' ? 'bg-indigo-600' : 'hover:bg-slate-700'}`}>Upload File</button>
@@ -76,43 +87,48 @@ const AddNewSourceModal: React.FC<{
   );
 };
 
-
 interface DashboardViewProps {
-  user: User;
   onSelectStudySet: (id: string) => void;
-  onLogout: () => void;
 }
 
-const DashboardView: React.FC<DashboardViewProps> = ({ user, onSelectStudySet, onLogout }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ onSelectStudySet }) => {
+  const { user, users, switchUser } = useAuth();
   const [studySets, setStudySets] = useState<StudySet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const fetchStudySets = useCallback(() => {
+  const fetchStudySets = useCallback(async () => {
+    if (!user) return;
     setIsLoading(true);
-    firebaseService.getStudySets(user.uid)
-      .then(sets => {
-        setStudySets(sets);
-        setIsLoading(false);
-      })
-      .catch(console.error);
-  }, [user.uid]);
+    try {
+      const sets = await firestoreService.getStudySetsForUser(user.uid);
+      setStudySets(sets);
+    } catch (error) {
+      console.error("Failed to fetch study sets:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchStudySets();
   }, [fetchStudySets]);
 
-  const handleStudySetAdded = () => {
-    fetchStudySets(); // Refresh the list
-  };
-
   return (
     <div className="min-h-screen p-4 sm:p-6 lg:p-8">
-      <header className="flex justify-between items-center mb-8">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-        <div>
-            <span className="text-slate-400 mr-4 hidden sm:inline">Welcome, {user.displayName}</span>
-            <Button onClick={onLogout} variant='secondary'>Logout</Button>
+        <div className="flex items-center gap-4">
+            <span className="text-slate-400">Current User:</span>
+            <select
+                value={user?.uid || ''}
+                onChange={(e) => switchUser(e.target.value)}
+                className="bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+                {users.map((u) => (
+                    <option key={u.uid} value={u.uid}>{u.displayName}</option>
+                ))}
+            </select>
         </div>
       </header>
 
@@ -139,13 +155,13 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, onSelectStudySet, o
             <Card key={set.id} onClick={() => onSelectStudySet(set.id)}>
               <h2 className="text-xl font-bold text-indigo-400 truncate">{set.title}</h2>
               <p className="text-slate-400 mt-2 text-sm line-clamp-3">{set.summaryText}</p>
-              <p className="text-xs text-slate-500 mt-4">Created: {new Date(set.createdAt).toLocaleDateString()}</p>
+              <p className="text-xs text-slate-500 mt-4">Created: {set.createdAt.toDate().toLocaleDateString()}</p>
             </Card>
           ))}
         </div>
       )}
 
-      <AddNewSourceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onStudySetAdded={handleStudySetAdded} user={user} />
+      <AddNewSourceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onStudySetAdded={fetchStudySets} />
     </div>
   );
 };

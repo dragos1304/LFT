@@ -35,7 +35,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
       <div className="bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b border-slate-700">
           <h2 className="text-xl font-bold text-white">{title}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">&times;</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
         </div>
         <div className="p-6 overflow-y-auto">
           {children}
@@ -46,7 +46,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
 };
 
 export const Spinner: React.FC = () => (
-  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400"></div>
+  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-400"></div>
 );
 
 interface CardProps {
@@ -79,16 +79,14 @@ export const StarRating: React.FC<StarRatingProps> = ({ score, setScore, maxScor
       {[...Array(maxScore)].map((_, index) => {
         const ratingValue = index + 1;
         return (
-          <label key={ratingValue}>
-            <input
-              type="radio"
-              name="rating"
-              value={ratingValue}
-              onClick={() => setScore(ratingValue)}
-              className="hidden"
-            />
+          <button
+            key={ratingValue}
+            onClick={() => setScore(ratingValue)}
+            className="focus:outline-none"
+            aria-label={`Rate ${ratingValue} out of ${maxScore}`}
+          >
             <StarIcon className={`cursor-pointer h-5 w-5 ${ratingValue <= score ? 'text-yellow-400' : 'text-slate-600'}`} />
-          </label>
+          </button>
         );
       })}
     </div>

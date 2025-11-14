@@ -1,7 +1,5 @@
-// TODO: Replace with your Firebase project's configuration object.
-// You can find this in your Firebase project console:
-// Project Settings > General > Your apps > Web app > Firebase SDK snippet > Config
-
+// This object is used to connect to your Firebase project.
+// It is sourced from your Firebase project console.
 export const firebaseConfig = {
     apiKey: "AIzaSyCOoUSqJL7uOgLRdumFmBtmoBbMEekKvTY",
     authDomain: "lft-app-4a61a.firebaseapp.com",
